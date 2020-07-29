@@ -3,6 +3,7 @@
 
 #include "filters.h"
 #include "syscalls.h"
+#include "container.h"
 
 struct _tracepoint_sched_process_fork
 {
@@ -15,13 +16,6 @@ struct _tracepoint_sched_process_fork
     pid_t parent_pid;
     char child_comm[16];
     pid_t child_pid;
-};
-
-struct proc_cache_t {
-    u64 inode;
-    u32 numlower;
-    u32 padding;
-    char container_id[CONTAINER_ID_LEN];
 };
 
 void __attribute__((always_inline)) copy_proc_cache(struct proc_cache_t *dst, struct proc_cache_t *src) {
