@@ -18,23 +18,36 @@ import (
 	"github.com/DataDog/datadog-agent/cmd/agent/common/signals"
 	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/flare"
+	secagent "github.com/DataDog/datadog-agent/pkg/security/agent"
 	"github.com/DataDog/datadog-agent/pkg/status"
 	"github.com/DataDog/datadog-agent/pkg/status/health"
 	"github.com/DataDog/datadog-agent/pkg/util"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
-// SetupHandlers adds the specific handlers for /agent endpoints
-func SetupHandlers(r *mux.Router) {
-	r.HandleFunc("/version", common.GetVersion).Methods("GET")
-	r.HandleFunc("/flare", makeFlare).Methods("POST")
-	r.HandleFunc("/hostname", getHostname).Methods("GET")
-	r.HandleFunc("/stop", stopAgent).Methods("POST")
-	r.HandleFunc("/status", getStatus).Methods("GET")
-	r.HandleFunc("/status/health", getHealth).Methods("GET")
+// Agent handles REST API calls
+type Agent struct {
+	runtimeAgent *secagent.RuntimeSecurityAgent
 }
 
-func stopAgent(w http.ResponseWriter, r *http.Request) {
+// NewAgent returns a new Agent
+func NewAgent(runtimeAgent *secagent.RuntimeSecurityAgent) *Agent {
+	return &Agent{
+		runtimeAgent: runtimeAgent,
+	}
+}
+
+// SetupHandlers adds the specific handlers for /agent endpoints
+func (a *Agent) SetupHandlers(r *mux.Router) {
+	r.HandleFunc("/version", common.GetVersion).Methods("GET")
+	r.HandleFunc("/flare", a.makeFlare).Methods("POST")
+	r.HandleFunc("/hostname", a.getHostname).Methods("GET")
+	r.HandleFunc("/stop", a.stopAgent).Methods("POST")
+	r.HandleFunc("/status", a.getStatus).Methods("GET")
+	r.HandleFunc("/status/health", a.getHealth).Methods("GET")
+}
+
+func (a *Agent) stopAgent(w http.ResponseWriter, r *http.Request) {
 	signals.Stopper <- true
 	w.Header().Set("Content-Type", "application/json")
 	j, err := json.Marshal("")
@@ -46,7 +59,7 @@ func stopAgent(w http.ResponseWriter, r *http.Request) {
 	w.Write(j)
 }
 
-func getHostname(w http.ResponseWriter, r *http.Request) {
+func (a *Agent) getHostname(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	hname, err := util.GetHostname()
 	if err != nil {
@@ -62,7 +75,7 @@ func getHostname(w http.ResponseWriter, r *http.Request) {
 	w.Write(j)
 }
 
-func getStatus(w http.ResponseWriter, r *http.Request) {
+func (a *Agent) getStatus(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	s, err := status.GetStatus()
 	if err != nil {
@@ -70,6 +83,10 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 		body, _ := json.Marshal(map[string]string{"error": err.Error()})
 		http.Error(w, string(body), 500)
 		return
+	}
+
+	if a.runtimeAgent != nil {
+		s["runtimeSecurityStatus"] = a.runtimeAgent.GetStatus()
 	}
 
 	jsonStats, err := json.Marshal(s)
@@ -83,7 +100,7 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonStats)
 }
 
-func getHealth(w http.ResponseWriter, r *http.Request) {
+func (a *Agent) getHealth(w http.ResponseWriter, r *http.Request) {
 	h := health.GetReady()
 
 	if len(h.Unhealthy) > 0 {
@@ -101,7 +118,7 @@ func getHealth(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonHealth)
 }
 
-func makeFlare(w http.ResponseWriter, r *http.Request) {
+func (a *Agent) makeFlare(w http.ResponseWriter, r *http.Request) {
 	log.Infof("Making a flare")
 	w.Header().Set("Content-Type", "application/json")
 	logFile := config.Datadog.GetString("log_file")
