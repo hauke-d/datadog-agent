@@ -730,11 +730,13 @@ func InitConfig(config Config) {
 	config.BindEnvAndSetDefault("inventories_max_interval", 600) // 10min
 	config.BindEnvAndSetDefault("inventories_min_interval", 300) // 5min
 
+	// Datadog security agent (common)
+	config.BindEnvAndSetDefault("security_agent.cmd_port", 5010)
+
 	// Datadog security agent (compliance)
 	config.BindEnvAndSetDefault("compliance_config.enabled", false)
 	config.BindEnvAndSetDefault("compliance_config.check_interval", 20*time.Minute)
 	config.BindEnvAndSetDefault("compliance_config.dir", "/etc/datadog-agent/compliance.d")
-	config.BindEnvAndSetDefault("compliance_config.cmd_port", 5010)
 
 	// Datadog security agent (runtime)
 	config.BindEnvAndSetDefault("runtime_security_config.enabled", false)
