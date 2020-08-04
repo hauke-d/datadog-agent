@@ -143,6 +143,9 @@ func runAgent(exit <-chan struct{}) {
 		heartbeat := time.NewTicker(15 * time.Second)
 		for range heartbeat.C {
 			statsd.Client.Gauge("datadog.system_probe.agent", 1, tags, 1) //nolint:errcheck
+			for module_name, _ := range loader.modules {
+				statsd.Client.Gauge(fmt.Sprintf("datadog.system_probe.agent.%s", module_name), 1, tags, 1) //nolint:errcheck
+			}
 		}
 	}()
 
