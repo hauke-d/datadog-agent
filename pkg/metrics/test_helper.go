@@ -130,6 +130,39 @@ func assertSketchSeriesEqualWithComparator(t assert.TestingT, exp, act SketchSer
 	}
 }
 
+func makesketch(n int) *quantile.Sketch {
+	s, c := &quantile.Sketch{}, quantile.Default()
+	for i := 0; i < n; i++ {
+		s.Insert(c, float64(i))
+	}
+	return s
+}
+
+// makeseries is deterministic so that we can test for mutation.
+func Makeseries(i int) SketchSeries {
+	ss := SketchSeries{
+		Name: fmt.Sprintf("name.%d", i),
+		Tags: []string{
+			fmt.Sprintf("a:%d", i),
+			fmt.Sprintf("b:%d", i),
+		},
+		Host:     fmt.Sprintf("host.%d", i),
+		Interval: int64(i),
+	}
+
+	for j := 0; j < i+5; j++ {
+		ss.Points = append(ss.Points, SketchPoint{
+			Ts:     10 * int64(j),
+			Sketch: makesketch(j),
+		})
+	}
+
+	gen := ckey.NewKeyGenerator()
+	ss.ContextKey = gen.Generate(ss.Name, ss.Host, ss.Tags)
+
+	return ss
+}
+
 type tHelper interface {
 	Helper()
 }
