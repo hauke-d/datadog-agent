@@ -18,13 +18,13 @@ import (
 
 func TestSplitPayloadsSeries(t *testing.T) {
 	t.Run("both compressed and uncompressed series payload under limits", func(t *testing.T) {
-		testSplitPayloadsSeries(t, 30, true)
+		testSplitPayloadsSeries(t, 30, false)
 	})
 	t.Run("compressed series payload over limit but uncompressed under limit", func(t *testing.T) {
-		testSplitPayloadsSeries(t, 8000, true)
+		testSplitPayloadsSeries(t, 8000, false)
 	})
 	t.Run("both compressed and uncompressed series payload over limits", func(t *testing.T) {
-		testSplitPayloadsSeries(t, 250000, true)
+		testSplitPayloadsSeries(t, 250000, false)
 	})
 }
 
@@ -123,13 +123,13 @@ func BenchmarkSplitPayloadsSeries(b *testing.B) {
 
 func TestSplitPayloadsEvents(t *testing.T) {
 	t.Run("both compressed and uncompressed event payload under limits", func(t *testing.T) {
-		testSplitPayloadsEvents(t, 30, true)
+		testSplitPayloadsEvents(t, 30, false)
 	})
 	t.Run("compressed event payload over limit but uncompressed under limit", func(t *testing.T) {
-		testSplitPayloadsEvents(t, 15000, true)
+		testSplitPayloadsEvents(t, 15000, false)
 	})
 	t.Run("both compressed and uncompressed event payload over limits", func(t *testing.T) {
-		testSplitPayloadsEvents(t, 500000, true)
+		testSplitPayloadsEvents(t, 500000, false)
 	})
 }
 
@@ -169,13 +169,13 @@ func testSplitPayloadsEvents(t *testing.T, numPoints int, compress bool) {
 
 func TestSplitPayloadsServiceChecks(t *testing.T) {
 	t.Run("both compressed and uncompressed service checks payload under limits", func(t *testing.T) {
-		testSplitPayloadsServiceChecks(t, 30, true)
+		testSplitPayloadsServiceChecks(t, 30, false)
 	})
 	t.Run("compressed service checks payload over limit but uncompressed under limit", func(t *testing.T) {
-		testSplitPayloadsServiceChecks(t, 20000, true)
+		testSplitPayloadsServiceChecks(t, 20000, false)
 	})
 	t.Run("both compressed and uncompressed service checks payload over limits", func(t *testing.T) {
-		testSplitPayloadsServiceChecks(t, 510000, true)
+		testSplitPayloadsServiceChecks(t, 510000, false)
 	})
 }
 
@@ -212,10 +212,10 @@ func testSplitPayloadsServiceChecks(t *testing.T, numPoints int, compress bool) 
 
 func TestSplitPayloadsSketches(t *testing.T) {
 	t.Run("both compressed and uncompressed sketch payload under limits", func(t *testing.T) {
-		testSplitPayloadsSketches(t, 5, true)
+		testSplitPayloadsSketches(t, 5, false)
 	})
 	t.Run("compressed sketch payload over limit but uncompressed under limit", func(t *testing.T) {
-		testSplitPayloadsSketches(t, 250, true)
+		testSplitPayloadsSketches(t, 250, false)
 	})
 	//cannot add enough sketches to exceed the uncompressed payload limit without a test timeout.
 }
