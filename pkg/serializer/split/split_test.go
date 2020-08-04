@@ -17,9 +17,20 @@ import (
 )
 
 func TestSplitPayloadsSeries(t *testing.T) {
+	t.Run("both compressed and uncompressed series payload under limits", func(t *testing.T) {
+		testSplitPayloadsSeries(t, 30, true)
+	})
+	t.Run("compressed series payload over limit but uncompressed under limit", func(t *testing.T) {
+		testSplitPayloadsSeries(t, 8000, true)
+	})
+	t.Run("both compressed and uncompressed series payload over limits", func(t *testing.T) {
+		testSplitPayloadsSeries(t, 250000, true)
+	})
+}
+
+func testSplitPayloadsSeries(t *testing.T, numPoints int, compress bool) {
 	testSeries := metrics.Series{}
-	// add enough points to exceed the uncompressed and compressed size limits
-	for i := 0; i < 300000; i++ {
+	for i := 0; i < numPoints; i++ {
 		point := metrics.Serie{
 			Points: []metrics.Point{
 				{Ts: 12345.0, Value: float64(21.21)},
@@ -44,7 +55,7 @@ func TestSplitPayloadsSeries(t *testing.T) {
 	}
 
 	originalLength := len(testSeries)
-	payloads, err := Payloads(testSeries, false, MarshalJSON)
+	payloads, err := Payloads(testSeries, compress, MarshalJSON)
 	require.Nil(t, err)
 	var splitSeries = []metrics.Series{}
 	for _, payload := range payloads {
@@ -111,8 +122,20 @@ func BenchmarkSplitPayloadsSeries(b *testing.B) {
 }
 
 func TestSplitPayloadsEvents(t *testing.T) {
+	t.Run("both compressed and uncompressed event payload under limits", func(t *testing.T) {
+		testSplitPayloadsEvents(t, 30, true)
+	})
+	t.Run("compressed event payload over limit but uncompressed under limit", func(t *testing.T) {
+		testSplitPayloadsEvents(t, 15000, true)
+	})
+	t.Run("both compressed and uncompressed event payload over limits", func(t *testing.T) {
+		testSplitPayloadsEvents(t, 500000, true)
+	})
+}
+
+func testSplitPayloadsEvents(t *testing.T, numPoints int, compress bool) {
 	testEvent := metrics.Events{}
-	for i := 0; i < 30000; i++ {
+	for i := 0; i < numPoints; i++ {
 		event := metrics.Event{
 			Title:          "test title",
 			Text:           "test text",
@@ -126,7 +149,7 @@ func TestSplitPayloadsEvents(t *testing.T) {
 	}
 
 	originalLength := len(testEvent)
-	payloads, err := Payloads(testEvent, false, MarshalJSON)
+	payloads, err := Payloads(testEvent, compress, MarshalJSON)
 	require.Nil(t, err)
 	unrolledEvents := []interface{}{}
 	for _, payload := range payloads {
@@ -145,8 +168,20 @@ func TestSplitPayloadsEvents(t *testing.T) {
 }
 
 func TestSplitPayloadsServiceChecks(t *testing.T) {
+	t.Run("both compressed and uncompressed service checks payload under limits", func(t *testing.T) {
+		testSplitPayloadsServiceChecks(t, 30, true)
+	})
+	t.Run("compressed service checks payload over limit but uncompressed under limit", func(t *testing.T) {
+		testSplitPayloadsServiceChecks(t, 20000, true)
+	})
+	t.Run("both compressed and uncompressed service checks payload over limits", func(t *testing.T) {
+		testSplitPayloadsServiceChecks(t, 510000, true)
+	})
+}
+
+func testSplitPayloadsServiceChecks(t *testing.T, numPoints int, compress bool) {
 	testServiceChecks := metrics.ServiceChecks{}
-	for i := 0; i < 30000; i++ {
+	for i := 0; i < numPoints; i++ {
 		sc := metrics.ServiceCheck{
 			CheckName: "test.check",
 			Host:      "test.localhost",
@@ -159,7 +194,7 @@ func TestSplitPayloadsServiceChecks(t *testing.T) {
 	}
 
 	originalLength := len(testServiceChecks)
-	payloads, err := Payloads(testServiceChecks, false, MarshalJSON)
+	payloads, err := Payloads(testServiceChecks, compress, MarshalJSON)
 	require.Nil(t, err)
 	unrolledServiceChecks := []interface{}{}
 	for _, payload := range payloads {
@@ -171,6 +206,44 @@ func TestSplitPayloadsServiceChecks(t *testing.T) {
 		}
 	}
 
-	newLength := len(testServiceChecks)
+	newLength := len(unrolledServiceChecks)
+	require.Equal(t, originalLength, newLength)
+}
+
+func TestSplitPayloadsSketches(t *testing.T) {
+	t.Run("both compressed and uncompressed sketch payload under limits", func(t *testing.T) {
+		testSplitPayloadsSketches(t, 5, true)
+	})
+	t.Run("compressed sketch payload over limit but uncompressed under limit", func(t *testing.T) {
+		testSplitPayloadsSketches(t, 250, true)
+	})
+	//cannot add enough sketches to exceed the uncompressed payload limit without a test timeout.
+}
+
+func testSplitPayloadsSketches(t *testing.T, numPoints int, compress bool) {
+	testSketchSeries := make(metrics.SketchSeriesList, numPoints)
+	for i := 0; i < numPoints; i++ {
+		testSketchSeries[i] = metrics.Makeseries(i)
+	}
+	originalLength := len(testSketchSeries)
+
+	payloads, err := Payloads(testSketchSeries, compress, MarshalJSON)
+	require.Nil(t, err)
+	var splitSketches = []metrics.SketchSeriesList{}
+	for _, payload := range payloads {
+		var s = map[string]metrics.SketchSeriesList{}
+		err = json.Unmarshal(*payload, &s)
+		require.Nil(t, err)
+		splitSketches = append(splitSketches, s["sketches"])
+	}
+
+	unrolledSketches := []metrics.SketchSeries{}
+	for _, sketches := range splitSketches {
+		for _, s := range sketches {
+			unrolledSketches = append(unrolledSketches, s)
+		}
+	}
+
+	newLength := len(unrolledSketches)
 	require.Equal(t, originalLength, newLength)
 }
